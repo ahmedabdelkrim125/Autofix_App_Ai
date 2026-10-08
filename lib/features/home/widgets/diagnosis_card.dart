@@ -1,0 +1,75 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../core/theme/app_colors.dart';
+
+class DiagnosisCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String date;
+  final String status;
+  final Color statusColor;
+
+  const DiagnosisCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.date,
+    required this.status,
+    required this.statusColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.surface : Colors.white;
+    final iconBgColor = isDark ? AppColors.background : const Color(0xFFF5F7FA);
+    final textColor = isDark ? AppColors.textPrimary : Colors.black87;
+    final textSecColor = isDark ? AppColors.textSecondary : Colors.black54;
+
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: isDark ? [] : [BoxShadow(color: Colors.black12, blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: iconBgColor,
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            child: Icon(icon, color: AppColors.success, size: 24.sp),
+          ),
+          SizedBox(width: 16.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: textColor, fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                SizedBox(height: 4.h),
+                Text(date, style: TextStyle(color: textSecColor, fontSize: 12.sp)),
+              ],
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle_outline, color: statusColor, size: 14.sp),
+                SizedBox(width: 4.w),
+                Text(status, style: TextStyle(color: statusColor, fontSize: 12.sp, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
