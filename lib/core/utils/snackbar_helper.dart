@@ -3,7 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../theme/app_colors.dart';
 
 class SnackbarHelper {
-  static void showTopSnackbar(BuildContext context, String message, {bool isError = false}) {
+  static void showTopSnackbar(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
     final overlay = Overlay.of(context);
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
@@ -22,7 +26,7 @@ class SnackbarHelper {
                   color: Colors.black26,
                   blurRadius: 10,
                   offset: const Offset(0, 5),
-                )
+                ),
               ],
             ),
             child: Row(
@@ -36,7 +40,11 @@ class SnackbarHelper {
                 Expanded(
                   child: Text(
                     message,
-                    style: TextStyle(color: Colors.white, fontSize: 14.sp, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

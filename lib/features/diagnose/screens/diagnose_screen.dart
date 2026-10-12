@@ -1,22 +1,48 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/networking/base_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/snackbar_helper.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../data/models/fault_model.dart';
+import '../logic/diagnose_cubit.dart';
+import 'diagnosis_result_screen.dart';
 
-class DiagnoseScreen extends StatefulWidget {
+class DiagnoseScreen extends StatelessWidget {
   const DiagnoseScreen({super.key});
 
   @override
-  State<DiagnoseScreen> createState() => _DiagnoseScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<DiagnoseCubit>(),
+      child: const _DiagnoseView(),
+    );
+  }
 }
 
-class _DiagnoseScreenState extends State<DiagnoseScreen> {
+class _DiagnoseView extends StatefulWidget {
+  const _DiagnoseView();
+
+  @override
+  State<_DiagnoseView> createState() => _DiagnoseViewState();
+}
+
+class _DiagnoseViewState extends State<_DiagnoseView> {
   bool isDescribe = true;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -25,14 +51,43 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
         setState(() {
           _selectedImage = File(image.path);
         });
+        if (!mounted) return;
         SnackbarHelper.showTopSnackbar(context, 'Image attached successfully!');
       }
     } catch (e) {
+      if (!mounted) return;
       SnackbarHelper.showTopSnackbar(
         context,
         'Failed to pick image',
         isError: true,
       );
+    }
+  }
+
+  void _analyze(BuildContext context) {
+    final cubit = context.read<DiagnoseCubit>();
+    if (isDescribe) {
+      final text = _descriptionController.text.trim();
+      if (text.isEmpty) {
+        SnackbarHelper.showTopSnackbar(
+          context,
+          'Please describe the issue',
+          isError: true,
+        );
+        return;
+      }
+      cubit.diagnoseText(text);
+    } else {
+      final image = _selectedImage;
+      if (image == null) {
+        SnackbarHelper.showTopSnackbar(
+          context,
+          'Please upload a photo first',
+          isError: true,
+        );
+        return;
+      }
+      cubit.diagnoseImage(image);
     }
   }
 
@@ -47,142 +102,170 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
         ? AppColors.textSecondary.withOpacity(0.3)
         : Colors.grey.withOpacity(0.3);
 
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Icon(Icons.arrow_back, color: textColor, size: 24.sp),
-        title: Text(
-          'New Diagnosis',
-          style: TextStyle(
-            color: textColor,
-            fontSize: 20.sp,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 50.h,
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: BorderRadius.circular(12.r),
-                boxShadow: isDark
-                    ? []
-                    : [BoxShadow(color: Colors.black12, blurRadius: 4)],
+    return BlocConsumer<DiagnoseCubit, BaseState<FaultModel>>(
+      listener: (context, state) {
+        if (state is BaseSuccess<FaultModel>) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DiagnosisResultScreen(fault: state.data),
+            ),
+          );
+        } else if (state is BaseFailure<FaultModel>) {
+          SnackbarHelper.showTopSnackbar(context, state.message, isError: true);
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state is BaseLoading<FaultModel>;
+
+        return Scaffold(
+          backgroundColor: bgColor,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: Icon(Icons.arrow_back, color: textColor, size: 24.sp),
+            title: Text(
+              'New Diagnosis',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 20.sp,
+                fontWeight: FontWeight.bold,
               ),
-              child: Row(
+            ),
+          ),
+          body: Padding(
+            padding: EdgeInsets.all(24.w),
+            child: Skeletonizer(
+              enabled: isLoading,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isDescribe = true),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isDescribe
-                              ? (isDark
-                                    ? AppColors.surface
-                                    : const Color(0xFFE2E8F0))
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12.r),
-                          border: isDescribe
-                              ? Border.all(color: borderCol)
-                              : null,
-                        ),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.chat_bubble_outline,
-                                color: isDescribe ? textColor : textSecColor,
-                                size: 18.sp,
+                  Container(
+                    height: 50.h,
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(12.r),
+                      boxShadow: isDark
+                          ? []
+                          : [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => isDescribe = true),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: isDescribe
+                                    ? (isDark
+                                          ? AppColors.surface
+                                          : const Color(0xFFE2E8F0))
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: isDescribe
+                                    ? Border.all(color: borderCol)
+                                    : null,
                               ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                'Describe',
-                                style: TextStyle(
-                                  color: isDescribe ? textColor : textSecColor,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      color: isDescribe
+                                          ? textColor
+                                          : textSecColor,
+                                      size: 18.sp,
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      'Describe',
+                                      style: TextStyle(
+                                        color: isDescribe
+                                            ? textColor
+                                            : textSecColor,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => isDescribe = false),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: !isDescribe
+                                    ? (isDark
+                                          ? AppColors.surface
+                                          : const Color(0xFFE2E8F0))
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: !isDescribe
+                                    ? Border.all(color: borderCol)
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.camera_alt_outlined,
+                                      color: !isDescribe
+                                          ? textColor
+                                          : textSecColor,
+                                      size: 18.sp,
+                                    ),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      'Photo Scan',
+                                      style: TextStyle(
+                                        color: !isDescribe
+                                            ? textColor
+                                            : textSecColor,
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  SizedBox(height: 32.h),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isDescribe = false),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: !isDescribe
-                              ? (isDark
-                                    ? AppColors.surface
-                                    : const Color(0xFFE2E8F0))
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12.r),
-                          border: !isDescribe
-                              ? Border.all(color: borderCol)
-                              : null,
-                        ),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.camera_alt_outlined,
-                                color: !isDescribe ? textColor : textSecColor,
-                                size: 18.sp,
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                'Photo Scan',
-                                style: TextStyle(
-                                  color: !isDescribe ? textColor : textSecColor,
-                                  fontSize: 14.sp,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                    child: isDescribe
+                        ? _buildDescribeView(
+                            surfaceColor,
+                            textColor,
+                            textSecColor,
+                            isDark,
+                          )
+                        : _buildPhotoScanView(
+                            surfaceColor,
+                            textColor,
+                            textSecColor,
+                            isDark,
                           ),
-                        ),
-                      ),
-                    ),
+                  ),
+                  CustomButton(
+                    text: 'Analyze Issue',
+                    onPressed: () => _analyze(context),
                   ),
                 ],
               ),
             ),
-            SizedBox(height: 32.h),
-            Expanded(
-              child: isDescribe
-                  ? _buildDescribeView(
-                      surfaceColor,
-                      textColor,
-                      textSecColor,
-                      isDark,
-                    )
-                  : _buildPhotoScanView(
-                      surfaceColor,
-                      textColor,
-                      textSecColor,
-                      isDark,
-                    ),
-            ),
-            CustomButton(
-              text: 'Analyze Issue',
-              onPressed: () =>
-                  SnackbarHelper.showTopSnackbar(context, 'Analyzing Issue...'),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -195,37 +278,6 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Category (Optional)',
-          style: TextStyle(
-            color: textColor,
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        SizedBox(height: 12.h),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 16.w),
-          height: 56.h,
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(12.r),
-            boxShadow: isDark
-                ? []
-                : [BoxShadow(color: Colors.black12, blurRadius: 4)],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Auto-detect category',
-                style: TextStyle(color: textSecColor, fontSize: 16.sp),
-              ),
-              Icon(Icons.keyboard_arrow_down, color: textSecColor, size: 24.sp),
-            ],
-          ),
-        ),
-        SizedBox(height: 24.h),
         Text(
           'Issue Description',
           style: TextStyle(
@@ -246,6 +298,7 @@ class _DiagnoseScreenState extends State<DiagnoseScreen> {
                   : [BoxShadow(color: Colors.black12, blurRadius: 4)],
             ),
             child: TextField(
+              controller: _descriptionController,
               maxLines: null,
               style: TextStyle(color: textColor, fontSize: 16.sp),
               decoration: InputDecoration(

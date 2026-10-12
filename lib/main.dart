@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'core/di/service_locator.dart';
+import 'core/helpers/token_storage.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/main_layout/screens/main_layout_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await setupGetIt();
   runApp(const MyApp());
 }
 
@@ -38,7 +43,9 @@ class MyApp extends StatelessWidget {
                 primaryColor: AppColors.primary,
                 fontFamily: 'Roboto',
               ),
-              home: const LoginScreen(),
+              home: getIt<TokenStorage>().hasSession
+                  ? const MainLayoutScreen()
+                  : const LoginScreen(),
             );
           },
         );

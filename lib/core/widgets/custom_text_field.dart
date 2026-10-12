@@ -8,6 +8,7 @@ class CustomTextField extends StatefulWidget {
   final bool isPassword;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
 
   const CustomTextField({
     super.key,
@@ -15,6 +16,7 @@ class CustomTextField extends StatefulWidget {
     this.isPassword = false,
     this.controller,
     this.validator,
+    this.keyboardType,
   });
 
   @override
@@ -40,6 +42,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
     return TextFormField(
       controller: widget.controller,
       obscureText: _obscureText,
+      keyboardType: widget.keyboardType,
       style: TextStyle(color: textColor, fontSize: 16.sp),
       validator: widget.validator,
       decoration: InputDecoration(
@@ -49,11 +52,15 @@ class _CustomTextFieldState extends State<CustomTextField> {
         hintStyle: TextStyle(color: textSecColor, fontSize: 16.sp),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: isDark ? Colors.transparent : Colors.black12),
+          borderSide: BorderSide(
+            color: isDark ? Colors.transparent : Colors.black12,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: BorderSide(color: isDark ? Colors.transparent : Colors.black12),
+          borderSide: BorderSide(
+            color: isDark ? Colors.transparent : Colors.black12,
+          ),
         ),
         errorStyle: TextStyle(color: Colors.redAccent, fontSize: 12.sp),
         contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 18.h),
